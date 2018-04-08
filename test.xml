@@ -1,0 +1,7 @@
+<Test>
+    <SingleLine>BBBCCC</SingleLine>
+    <MultiLines>
+        BBB
+        CCC
+    </MultiLines>
+</Test>

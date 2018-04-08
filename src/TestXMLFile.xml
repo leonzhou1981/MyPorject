@@ -1,0 +1,11 @@
+<Test>
+    <!--<SingleLine>AAA</SingleLine>-->
+    <!--<MultiLines>
+        BBB
+        CCC
+    </MultiLines>-->
+    <TotalLines>AAA
+        BBB
+        CCC
+    </TotalLines>
+</Test>
