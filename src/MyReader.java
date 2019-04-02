@@ -15,6 +15,8 @@ public class MyReader {
         FileFilter filter = new FileNameExtensionFilter("All files", "*.*");
         fileopen.addChoosableFileFilter(filter);
 
+        fileopen.setCurrentDirectory(new File("C:\\Temp"));
+
         int ret = fileopen.showDialog(null, "Open file");
 
         if (ret == JFileChooser.APPROVE_OPTION) {
@@ -27,7 +29,7 @@ public class MyReader {
             List<String> result = getOneSessionLog(file);
 
 //            List<String> result = getUnPublishedSQL(file);
-            File outputFile = new File("C:\\Users\\Leon\\result.txt");
+            File outputFile = new File("C:\\Temp\\result.txt");
             FileWriter fileWriter = null;
             try {
                 fileWriter = new FileWriter(outputFile);
@@ -50,29 +52,45 @@ public class MyReader {
 
     private static List<String> getKeyLines(File log) {
         List<String> filteredLog = new ArrayList<String>();
-        Map mapKeys = new TreeMap();
-        String filter = "[JYAN]Query execute time :";
+        List mapKeys = new ArrayList();
+        String filter = " execute time :";
+        List<String> lstBuffer = new ArrayList<String>();
         try {
             FileReader fileReader = new FileReader(log);
             BufferedReader bufferedReader = new BufferedReader(fileReader);
             String line = bufferedReader.readLine();
+            lstBuffer.add(line);
             while (null != line) {
                 int pos = line.indexOf(filter);
                 if (pos > -1) {
                     String piece = line.substring(pos + filter.length());
                     int time = getFirstNumber(piece);
-                    if (time > 1000) {
-                        mapKeys.put(line, line);
+                    if (time > 999) {
+                        if (lstBuffer.size() > 1) {
+                            int firstPrevLine = -1;
+                            for (int i = lstBuffer.size(); i-- > 1;) {
+                                String prevLine = lstBuffer.get(i - 1);
+                                if (startsWithDateTime(prevLine) || startsWithTimeOnly(prevLine)) {
+                                    firstPrevLine = i - 1;
+                                    break;
+                                }
+                            }
+                            for (int i = firstPrevLine; i < lstBuffer.size() - 1; i++) {
+                                String prevLine = lstBuffer.get(i);
+                                mapKeys.add(prevLine);
+                            }
+                            lstBuffer.clear();
+                        }
+                        mapKeys.add(line);
                     }
                 }
                 line = bufferedReader.readLine();
+                lstBuffer.add(line);
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        for (Iterator it = mapKeys.keySet().iterator(); it.hasNext();) {
+        for (Iterator it = mapKeys.iterator(); it.hasNext();) {
             filteredLog.add((String) it.next());
             filteredLog.add(System.getProperty("line.separator"));
         }
@@ -100,7 +118,7 @@ public class MyReader {
 
     private static List<String> getOneSessionLog(File log) {
         List<String> filteredLog = new ArrayList<String>();
-        String sessionId = "@[3036DF72-A97D-82B9-5B99-B54C7B53370E]@[JYAN]";
+        String sessionId = "@[64C7E01A-F4B1-7E2C-EF46-28CB015D93F8]@[KFF9HO]";
         try {
             FileReader fileReader = new FileReader(log);
             BufferedReader bufferedReader = new BufferedReader(fileReader);
@@ -137,13 +155,37 @@ public class MyReader {
         }
     }
 
+    private static boolean startsWithTimeOnly(String line) {
+        if (line != null && line.length() > 12) {
+            String time = line.substring(0, 12);
+            return isTimeFormatString(time, "hh:mm:ss,SSS");
+        } else {
+            return false;
+        }
+    }
+
     private static boolean isTimeFormatString(String time, String pattern) {
         if ("hh:mm:ss".equals(pattern)) {
             try {
                 int hour = Integer.valueOf(time.substring(0, 2));
+                String fh1 = time.substring(2,3);
                 int minute = Integer.valueOf(time.substring(3, 5));
+                String fh2 = time.substring(5,6);
                 int second = Integer.valueOf(time.substring(6, 8));
-                return hour < 24 && minute < 60 && second < 60;
+                return hour < 24 && minute < 60 && second < 60 && ":".equals(fh1) && ":".equals(fh2);
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        } else if ("hh:mm:ss,SSS".equals(pattern)) {
+            try {
+                int hour = Integer.valueOf(time.substring(0, 2));
+                String fh1 = time.substring(2,3);
+                int minute = Integer.valueOf(time.substring(3, 5));
+                String fh2 = time.substring(5,6);
+                int second = Integer.valueOf(time.substring(6, 8));
+                String dh1 = time.substring(8,9);
+                int ms = Integer.valueOf(time.substring(10, 12));
+                return hour < 24 && minute < 60 && second < 60 && ms < 1000 && ":".equals(fh1) && ":".equals(fh2) && ",".equals(dh1);
             } catch (NumberFormatException e) {
                 return false;
             }

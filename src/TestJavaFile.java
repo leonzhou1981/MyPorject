@@ -1,3 +1,6 @@
+import java.sql.Timestamp;
+import java.util.Date;
+
 /**
  * Created with IntelliJ IDEA.
  * User: Leon
@@ -7,7 +10,9 @@
 public class TestJavaFile {
 
     public static void main(String[] args) {
-        //Test for Line counter
+        Date date1 = new Date();
+//        Timestamp timestamp1 = new Timestamp();
+
     }
 
 

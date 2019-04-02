@@ -14,12 +14,12 @@ public class Lambda {
                 new BigDecimal("20"), new BigDecimal("15"), new BigDecimal("18"),
                 new BigDecimal("45"), new BigDecimal("12"));
 
-        final BigDecimal totalOfDiscountedPrices =
-                prices.stream()
-                        .filter(price -> price.compareTo(BigDecimal.valueOf(20)) > 0)
-                        .map(price -> price.multiply(BigDecimal.valueOf(0.9)))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-        System.out.println("Total of discounted prices: " + totalOfDiscountedPrices);
+//        final BigDecimal totalOfDiscountedPrices =
+//                prices.stream()
+//                        .filter(price -> price.compareTo(BigDecimal.valueOf(20)) > 0)
+//                        .map(price -> price.multiply(BigDecimal.valueOf(0.9)))
+//                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+//        System.out.println("Total of discounted prices: " + totalOfDiscountedPrices);
     }
 
     private static void function1() {
