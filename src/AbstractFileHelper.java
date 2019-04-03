@@ -52,7 +52,7 @@ public abstract class AbstractFileHelper {
     }
 
     protected void iterateDirectoryAndFiles(File aDirectoryOrFile) {
-        if (aDirectoryOrFile.isDirectory()) {
+        if (aDirectoryOrFile != null && aDirectoryOrFile.isDirectory()) {
             File[] subDirectoryAndFiles = aDirectoryOrFile.listFiles();
             for (int i = 0; i < subDirectoryAndFiles.length; i++) {
                 File subDirectoryAndFile = subDirectoryAndFiles[i];

@@ -53,6 +53,8 @@ public class POMFileHelper extends AbstractFileHelper {
                         if (scmNodeList != null && scmNodeList.getLength() > 0) {
                             String repoName = null;
                             String lineSeparator = System.getProperty("line.separator");
+                            boolean hasDeveloperConnection = false;
+
                             for (int j = 0; j < scmNodeList.getLength(); j++) {
                                 Node scmSubNode = scmNodeList.item(j);
                                 //Get repo name
@@ -66,7 +68,12 @@ public class POMFileHelper extends AbstractFileHelper {
                                         sb.append("Repo name is: ").append(repoName).append(lineSeparator);
                                     }
                                 }
+                                //Check if there is a <developerConnection> node
+                                if ("developerConnection".equals(scmSubNode.getNodeName())) {
+                                    hasDeveloperConnection = true;
+                                }
                             }
+
 
                             for (int j = 0; j < scmNodeList.getLength(); j++) {
                                 Node scmSubNode = scmNodeList.item(j);
@@ -107,8 +114,20 @@ public class POMFileHelper extends AbstractFileHelper {
                                 }
 
                                 if ("developerConnection".equals(scmSubNode.getNodeName())) {
-                                    sb.append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                    scmSubNode.getParentNode().removeChild(scmSubNode);
+                                    if (changeFromGitToSVN) {
+                                        scmSubNode.getParentNode().removeChild(scmSubNode);
+                                        sb.append("Node <developerConnection> is removed for repo: " + repoName).append(lineSeparator);
+                                    }
+                                } else if (!hasDeveloperConnection) {
+                                    if (changeFromSVNToGit) {
+                                        if (repoName != null && repoName.length() > 0) {
+                                            Element developerConneciton = doc.createElement("developerConnection");
+                                            developerConneciton.appendChild(doc.createTextNode(gitKey + gitPrefix + repoName + gitSuffix));
+                                            scmSubNode.getParentNode().appendChild(developerConneciton);
+                                            sb.append("Node <developerConnection> is added for repo: " + repoName).append(lineSeparator);
+                                            hasDeveloperConnection = true;
+                                        }
+                                    }
                                 }
                             }
                         }
