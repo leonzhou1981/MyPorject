@@ -20,10 +20,12 @@ import java.io.IOException;
 public class POMFileHelper extends AbstractFileHelper {
 
     private static boolean changeFromSVNToGit = true;
-    private static String svnPrefix = "scm:svn:http://svn.kewill-asia.com/svn/";
-    private static String svnSuffux = "/";
+    private static String svnKey = "scm:svn:";
+    private static String svnPrefix = "http://svn.kewill-asia.com/svn/";
+    private static String svnSuffix = "/";
     private static boolean changeFromGitToSVN = false;
-    private static String gitPrefix = "scm:git:https://bitbucket.blujaysolutions.com/scm/tmff/";
+    private static String gitKey = "scm:git:";
+    private static String gitPrefix = "https://bitbucket.blujaysolutions.com/scm/tmff/";
     private static String gitSuffix = ".git";
 
     @Override
@@ -53,52 +55,57 @@ public class POMFileHelper extends AbstractFileHelper {
                             String lineSeparator = System.getProperty("line.separator");
                             for (int j = 0; j < scmNodeList.getLength(); j++) {
                                 Node scmSubNode = scmNodeList.item(j);
+                                //Get repo name
                                 if ("connection".equals(scmSubNode.getNodeName())) {
                                     String connection = scmSubNode.getFirstChild().getNodeValue().trim();
-                                    if (changeFromSVNToGit) {
-                                        if (connection != null && connection.startsWith(svnPrefix) && connection.endsWith(svnSuffux)) {
-                                            sb.append("Before Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                            repoName = connection.substring(svnPrefix.length(), connection.length() - svnSuffux.length());
-                                            sb.append(repoName).append(lineSeparator);
-                                            scmSubNode.getFirstChild().setNodeValue(gitPrefix + repoName + gitSuffix);
-                                            sb.append("After Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                        }
-                                    }
-                                    if (changeFromGitToSVN) {
-                                        if (connection != null && connection.startsWith(gitPrefix) && connection.endsWith(gitSuffix)) {
-                                            sb.append("Before Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                            repoName = connection.substring(gitPrefix.length(), connection.length() - gitSuffix.length());
-                                            sb.append(repoName).append(lineSeparator);
-                                            scmSubNode.getFirstChild().setNodeValue(svnPrefix + repoName + svnSuffux);
-                                            sb.append("After Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                        }
+                                    if (connection != null && connection.startsWith(svnKey + svnPrefix) && connection.endsWith(svnSuffix)) {
+                                        repoName = connection.substring(svnKey.length() + svnPrefix.length(), connection.length() - svnSuffix.length());
+                                        sb.append("Repo name is: ").append(repoName).append(lineSeparator);
+                                    } else if (connection != null && connection.startsWith(gitKey + gitPrefix) && connection.endsWith(gitSuffix)) {
+                                        repoName = connection.substring(gitKey.length() + gitPrefix.length(), connection.length() - gitSuffix.length());
+                                        sb.append("Repo name is: ").append(repoName).append(lineSeparator);
                                     }
                                 }
                             }
 
                             for (int j = 0; j < scmNodeList.getLength(); j++) {
                                 Node scmSubNode = scmNodeList.item(j);
-                                if ("url".equals(scmSubNode.getNodeName())) {
-                                    String url = scmSubNode.getFirstChild().getNodeValue().trim();
+                                if ("connection".equals(scmSubNode.getNodeName())) {
+                                    String connection = scmSubNode.getFirstChild().getNodeValue().trim();
                                     if (changeFromSVNToGit) {
-                                        if (url != null && url.startsWith(svnPrefix) && url.endsWith(svnSuffux)) {
-                                            sb.append("Before Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                            repoName = url.substring(svnPrefix.length(), url.length() - svnSuffux.length());
-                                            sb.append(repoName).append(lineSeparator);
-                                            scmSubNode.getFirstChild().setNodeValue(gitPrefix + repoName + gitSuffix);
-                                            sb.append("After Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                        if (connection != null && connection.startsWith(svnKey + svnPrefix) && connection.endsWith(svnSuffix) && repoName != null && repoName.length() > 0) {
+                                            sb.append("Before Connection is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                            scmSubNode.getFirstChild().setNodeValue(gitKey + gitPrefix + repoName + gitSuffix);
+                                            sb.append("After Connection is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
                                         }
                                     }
                                     if (changeFromGitToSVN) {
-                                        if (url != null && url.startsWith(gitPrefix) && url.endsWith(gitSuffix)) {
-                                            sb.append("Before Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
-                                            repoName = url.substring(gitPrefix.length(), url.length() - gitSuffix.length());
-                                            sb.append(repoName).append(lineSeparator);
-                                            scmSubNode.getFirstChild().setNodeValue(svnPrefix + repoName + svnSuffux);
-                                            sb.append("After Change: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                        if (connection != null && connection.startsWith(gitKey + gitPrefix) && connection.endsWith(gitSuffix) && repoName != null && repoName.length() > 0) {
+                                            sb.append("Before Connection is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                            scmSubNode.getFirstChild().setNodeValue(svnKey + svnPrefix + repoName + svnSuffix);
+                                            sb.append("After Connection is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
                                         }
                                     }
                                 }
+
+                                if ("url".equals(scmSubNode.getNodeName())) {
+                                    String url = scmSubNode.getFirstChild().getNodeValue().trim();
+                                    if (changeFromSVNToGit) {
+                                        if (url != null && url.contains(svnPrefix) && url.endsWith(svnSuffix) && repoName != null && repoName.length() > 0) {
+                                            sb.append("Before URL is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                            scmSubNode.getFirstChild().setNodeValue(gitPrefix);
+                                            sb.append("After URL is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                        }
+                                    }
+                                    if (changeFromGitToSVN) {
+                                        if (url != null && url.contains(gitPrefix) && repoName != null && repoName.length() > 0) {
+                                            sb.append("Before URL is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                            scmSubNode.getFirstChild().setNodeValue(svnPrefix + repoName + svnSuffix);
+                                            sb.append("After URL is: ").append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
+                                        }
+                                    }
+                                }
+
                                 if ("developerConnection".equals(scmSubNode.getNodeName())) {
                                     sb.append(scmSubNode.getFirstChild().getNodeValue().trim()).append(lineSeparator);
                                     scmSubNode.getParentNode().removeChild(scmSubNode);
