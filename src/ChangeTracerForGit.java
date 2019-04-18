@@ -6,6 +6,7 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
 import java.io.File;
@@ -14,8 +15,8 @@ import java.util.List;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
-    private static final String REMOTE_REPO_URL = "https://bitbucket.blujaysolutions.com/scm/tmff/kff.git";
-    private static final String LOCAL_REPO_URL = "C:\\TMFF\\NEW_REPO\\kff";
+    private static final String REMOTE_REPO_URL = "https://bitbucket.blujaysolutions.com/scm/tmff/Portal.git";
+    private static final String LOCAL_REPO_URL = "C:\\TMFF\\NEW_REPO2\\Portal";
     private static final String BRANCH = "trunk";
     private static final String GIT_USERNAME = "liang.zhou";
     private static final String GIT_PASSWORD = "";
@@ -32,7 +33,7 @@ public class ChangeTracerForGit implements ChangeTracer {
                 .setCredentialsProvider(cp)
                 .call();*/
 
-            Repository repository = builder.setGitDir(new File("C:\\TMFF\\NEW_REPO\\kff\\.git"))
+            Repository repository = builder.setGitDir(new File("C:\\TMFF\\NEW_REPO\\Portal\\.git"))
                 .readEnvironment() // scan environment GIT_* variables
                 .findGitDir() // scan up the file system tree
                 .build();
@@ -42,7 +43,7 @@ public class ChangeTracerForGit implements ChangeTracer {
             RevCommit newCommit = null;
             CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
             CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
-            ObjectReader reader = repository.newObjectReader();
+            ObjectReader reader = git.getRepository().newObjectReader();
             for (RevCommit oldCommit : logs) {
                 if (newCommit != null) {
                     System.out.println("newCommitId: " + newCommit.toObjectId().getName());
