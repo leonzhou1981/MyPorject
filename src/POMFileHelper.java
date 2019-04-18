@@ -19,11 +19,11 @@ import java.io.IOException;
 
 public class POMFileHelper extends AbstractFileHelper {
 
-    private static boolean changeFromSVNToGit = true;
+    private static boolean changeFromSVNToGit = false;
     private static String svnKey = "scm:svn:";
     private static String svnPrefix = "http://svn.kewill-asia.com/svn/";
     private static String svnSuffix = "/";
-    private static boolean changeFromGitToSVN = false;
+    private static boolean changeFromGitToSVN = true;
     private static String gitKey = "scm:git:";
     private static String gitPrefix = "https://bitbucket.blujaysolutions.com/scm/tmff/";
     private static String gitSuffix = ".git";
