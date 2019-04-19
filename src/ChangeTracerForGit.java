@@ -2,6 +2,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -15,9 +16,10 @@ import java.util.List;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
-    private static final String REMOTE_REPO_URL = "https://bitbucket.blujaysolutions.com/scm/tmff/Portal.git";
-    private static final String LOCAL_REPO_URL = "C:\\TMFF\\NEW_REPO2\\Portal";
-    private static final String BRANCH = "trunk";
+    private static final String REPO_NAME = "framework";
+    private static final String REMOTE_REPO_URL = "https://bitbucket.blujaysolutions.com/scm/tmff/" + REPO_NAME + ".git";
+    private static final String LOCAL_REPO_URL = "C:\\TMFF\\NEW_REPO\\" + REPO_NAME + "\\.git";
+    private static final String BRANCH = "RB_19_1_0";
     private static final String GIT_USERNAME = "liang.zhou";
     private static final String GIT_PASSWORD = "";
 
@@ -33,13 +35,16 @@ public class ChangeTracerForGit implements ChangeTracer {
                 .setCredentialsProvider(cp)
                 .call();*/
 
-            Repository repository = builder.setGitDir(new File("C:\\TMFF\\NEW_REPO\\Portal\\.git"))
+            Repository repository = builder.setGitDir(new File(LOCAL_REPO_URL))
                 .readEnvironment() // scan environment GIT_* variables
                 .findGitDir() // scan up the file system tree
                 .build();
 
             Git git = new Git(repository);
-            Iterable<RevCommit> logs = git.log().call();
+//            Iterable<RevCommit> logs = git.log().addRange(repository.resolve("9c61166ccff83d675fa0c2b97928da2ca4a9c6a8"),
+//                repository.resolve("931fd27bb8cca46b995785702e23630fb5d5d12e")).call();
+            ObjectId latestCommit = repository.resolve("origin/" + BRANCH + "^{commit}");
+            Iterable<RevCommit> logs = git.log().addRange(repository.resolve("ec7f380b13737408a43b8e224552f38c34a57926"), latestCommit).call();
             RevCommit newCommit = null;
             CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
             CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
@@ -54,16 +59,15 @@ public class ChangeTracerForGit implements ChangeTracer {
                     System.out.println("getName: " + newCommit.getAuthorIdent().getName());
                     System.out.println("getWhen: " + newCommit.getAuthorIdent().getWhen());
                     System.out.println("getTimeZone: " + newCommit.getAuthorIdent().getTimeZone());
-                    System.out.println("getShortMessage: " + newCommit.getShortMessage());
                     System.out.println("getFullMessage: " + newCommit.getFullMessage());
-                    oldTreeIter.reset(reader, oldCommit.getTree().getId());
-                    newTreeIter.reset(reader, newCommit.getTree().getId());
-                    List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
-                    for (DiffEntry entry : diffs) {
-                        System.out.println("getChangeType: " + entry.getChangeType());
-                        System.out.println("getOldPath: " + entry.getOldPath());
-                        System.out.println("getNewPath: " + entry.getNewPath());
-                    }
+//                    oldTreeIter.reset(reader, oldCommit.getTree().getId());
+//                    newTreeIter.reset(reader, newCommit.getTree().getId());
+//                    List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
+//                    for (DiffEntry entry : diffs) {
+//                        System.out.println("getChangeType: " + entry.getChangeType());
+//                        System.out.println("getOldPath: " + entry.getOldPath());
+//                        System.out.println("getNewPath: " + entry.getNewPath());
+//                    }
                     System.out.println("---------------------------------------------------------");
                 }
                 newCommit = oldCommit;
