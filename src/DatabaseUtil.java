@@ -15,8 +15,6 @@ import java.util.Properties;
 
 public class DatabaseUtil {
 
-    public static final String ORACLE_DIRVER = "oracle.jdbc.driver.OracleDriver";
-
     public static Connection getDBConnection() {
         Properties properties = new Properties();
         try {
