@@ -2,6 +2,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.TransportException;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
@@ -15,11 +16,7 @@ import java.util.Properties;
 
 public class GitUtil {
 
-    public static Git getGit(String repoName) {
-        return getGit(repoName, repoName);
-    }
-
-    public static Git getGit(String remoteRepoName, String localRepoName) {
+    public static Git getGit(String remoteRepoName, String localRepoName, String branch) {
         Properties properties = new Properties();
         Git git = null;
         File localRepo = null;
@@ -51,6 +48,13 @@ public class GitUtil {
                         .setCredentialsProvider(new UsernamePasswordCredentialsProvider(username, password))
                         .call();
                 }
+            }
+            if (git != null && git.getRepository() != null) {
+                if (git.getRepository().resolve(branch) == null) {
+                    git.branchCreate().setName(branch).call();
+                }
+                Ref checkout = git.checkout().setName(branch).call();
+                System.out.println("Result of checking out the branch: " + checkout);
             }
         } catch (IOException | GitAPIException e) {
             e.printStackTrace();
