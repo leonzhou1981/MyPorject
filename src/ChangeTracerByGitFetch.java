@@ -162,6 +162,16 @@ public class ChangeTracerByGitFetch {
                     e.printStackTrace();
                 }
             }
+
+            @Override
+            public void doDirectoryProcess(File file) {
+
+            }
+
+            @Override
+            public void doProcess(File file) {
+
+            }
         });
         jarsPatternCache = jarsPattern;
         return jarsPattern;

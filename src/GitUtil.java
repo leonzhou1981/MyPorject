@@ -37,7 +37,7 @@ public class GitUtil {
                     .findGitDir() // scan up the file system tree
                     .build();
                 git = new Git(repository);
-            } else {
+            } else if (remoteRepoName != null && remoteRepoName.trim().length() > 0){
                 newDirForRepo = new File(localUrl + File.separator + localRepoName + File.separator);
                 if (newDirForRepo.exists() || newDirForRepo.mkdirs()) {
                     git = Git.cloneRepository()

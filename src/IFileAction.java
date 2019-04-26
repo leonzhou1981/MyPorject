@@ -9,4 +9,8 @@ import java.io.File;
 public interface IFileAction {
 
     void doFileProcess(File file);
+
+    void doDirectoryProcess(File file);
+
+    void doProcess(File file);
 }

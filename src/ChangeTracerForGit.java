@@ -21,6 +21,7 @@ import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 public class ChangeTracerForGit implements ChangeTracer {
@@ -31,6 +32,8 @@ public class ChangeTracerForGit implements ChangeTracer {
     private static final String BRANCH = "trunk";
     private static final String GIT_USERNAME = "liang.zhou";
     private static final String GIT_PASSWORD = "";
+    private static final String PROJECT_ROOT = "C:\\TMFF\\NEW_REPO\\"; //need file separator as end
+
 
     public static void main(String[] args) {
         FileRepositoryBuilder builder = new FileRepositoryBuilder();
@@ -41,25 +44,63 @@ public class ChangeTracerForGit implements ChangeTracer {
                 return;
             }
 
-//            UsernamePasswordCredentialsProvider cp =
-//                new UsernamePasswordCredentialsProvider(GIT_USERNAME, GIT_PASSWORD);
-            /*Git git = Git.cloneRepository()
-                .setURI(REMOTE_REPO_URL)
-                .setBranch(BRANCH)
-                .setDirectory(new File(LOCAL_REPO_URL))
-                .setCredentialsProvider(cp)
-                .call();*/
+            List<File> repos = findLocalRepos(PROJECT_ROOT);
+            if (repos != null && repos.size() > 0) {
+                for (int i = 0; i < repos.size(); i++) {
+                    File repo = repos.get(i);
+                    Repository repository = builder.setGitDir(repo)
+                        .readEnvironment() // scan environment GIT_* variables
+                        .findGitDir() // scan up the file system tree
+                        .build();
+                    ObjectId latestCommitId = repository.resolve("origin/" + BRANCH + "^{commit}");
+                    String addCommitSQL = "insert into gitlog (reponame, branch, commitid, packdate) values (?,?,?,?)";
+                    List addCommitParams = new ArrayList();
+                    addCommitParams.add(repo.getParent().substring(PROJECT_ROOT.length()));
+                    addCommitParams.add(BRANCH);
+                    addCommitParams.add(latestCommitId.getName());
+                    addCommitParams.add(new Timestamp(new Date().getTime()));
+                    DatabaseUtil.executeUpdate(dbConnection, addCommitSQL, addCommitParams);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-            Repository repository = builder.setGitDir(new File(LOCAL_REPO_URL))
-                .readEnvironment() // scan environment GIT_* variables
-                .findGitDir() // scan up the file system tree
-                .build();
+    private static List<File> findLocalRepos(String projectRoot) {
+        final List<File> repos = new ArrayList<>();
+        FileUtil.iterateAllFilesUnderOneDirectory(projectRoot, new IFileAction() {
+            @Override
+            public void doFileProcess(File file) {
 
-            Git git = new Git(repository);
-//            Collection<Ref> refs = git.lsRemote().setCredentialsProvider(cp).call();
-//            for (Ref ref : refs) {
-//                System.out.println("Ref: " + ref);
-//            }
+            }
+
+            @Override
+            public void doDirectoryProcess(File file) {
+                if (".git".equals(file.getName())) {
+                    repos.add(file);
+                }
+            }
+
+            @Override
+            public void doProcess(File file) {
+
+            }
+        });
+
+        return repos;
+    }
+
+    private static void getDiffPerCommit() {
+        FileRepositoryBuilder builder = new FileRepositoryBuilder();
+        try {
+            Connection dbConnection = DatabaseUtil.getDBConnection();
+            if (dbConnection == null) {
+                System.out.println("Cannot find database...");
+                return;
+            }
+
+            Git git = GitUtil.getGit("", "Portal", "trunk");
 
             CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
             CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
@@ -99,9 +140,9 @@ public class ChangeTracerForGit implements ChangeTracer {
 
 //            Iterable<RevCommit> logs = git.log().addRange(repository.resolve("9c61166ccff83d675fa0c2b97928da2ca4a9c6a8"),
 //                repository.resolve("931fd27bb8cca46b995785702e23630fb5d5d12e")).call();
-//            ObjectId latestCommit = repository.resolve("origin/" + BRANCH + "^{commit}");
+            ObjectId latestCommit = git.getRepository().resolve("origin/" + BRANCH + "^{commit}");
 //            Iterable<RevCommit> logs = git.log().addRange(repository.resolve("ec7f380b13737408a43b8e224552f38c34a57926"), latestCommit).call();
-            Iterable<RevCommit> logs = git.log().add(repository.resolve("origin/" + BRANCH)).call();
+            Iterable<RevCommit> logs = git.log().add(git.getRepository().resolve("origin/" + BRANCH)).call();
             RevCommit newCommit = null;
             long count = 0;
             for (RevCommit oldCommit : logs) {

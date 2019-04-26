@@ -20,7 +20,9 @@ public class FileUtil {
         if (path != null) {
             File file = new File(path);
             if (file.exists()) {
+                ifa.doProcess(file);
                 if (file.isDirectory()) {
+                    ifa.doDirectoryProcess(file);
                     String[] files = file.list();
                     for (String subFile : files) {
                         iterateAllFilesUnderOneDirectory(path + "\\" + subFile, ifa);
