@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
@@ -37,6 +38,7 @@ public class ChangeTracerForGit implements ChangeTracer {
 
     public static void main(String[] args) {
         FileRepositoryBuilder builder = new FileRepositoryBuilder();
+        builder.setMustExist(true);
         try {
             Connection dbConnection = DatabaseUtil.getDBConnection();
             if (dbConnection == null) {
@@ -46,14 +48,13 @@ public class ChangeTracerForGit implements ChangeTracer {
 
             List<File> repos = findLocalRepos(PROJECT_ROOT);
             if (repos != null && repos.size() > 0) {
+                String gitlogseq_increase = "select gitlogseq.nextVal from dual";
+                DatabaseUtil.executeUpdate(dbConnection, gitlogseq_increase, null);
                 for (int i = 0; i < repos.size(); i++) {
                     File repo = repos.get(i);
-                    Repository repository = builder.setGitDir(repo)
-                        .readEnvironment() // scan environment GIT_* variables
-                        .findGitDir() // scan up the file system tree
-                        .build();
+                    Repository repository = Git.open(repo).getRepository();
                     ObjectId latestCommitId = repository.resolve("origin/" + BRANCH + "^{commit}");
-                    String addCommitSQL = "insert into gitlog (reponame, branch, commitid, packdate) values (?,?,?,?)";
+                    String addCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid, packdate) values (gitlogseq.currVal,?,?,?,?)";
                     List addCommitParams = new ArrayList();
                     addCommitParams.add(repo.getParent().substring(PROJECT_ROOT.length()));
                     addCommitParams.add(BRANCH);
