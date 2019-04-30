@@ -35,11 +35,25 @@ create table gitlog
   reponame             VARCHAR2(200) not null,
   branch               VARCHAR2(200) not null,
   commitid             VARCHAR2(200) not null,
-  batchid              VARCHAR2(200) not null,
-  packdate             DATE
+  batchid              NUMBER(18,0) not null,
+  packdate             DATE,
+  packdone             NUMBER(1,0)
 )
 tablespace gitlog;
 
 alter table gitlog
   add constraint gitlog_pk primary key (reponame, branch, commitid, batchid)
+  using index tablespace gitlogindex;
+
+create table gitmaven
+(
+  groupid                VARCHAR2(200) not null,
+  artifactid             VARCHAR2(200) not null,
+  pattern                VARCHAR2(200) not null,
+  branch                 VARCHAR2(200) not null
+)
+tablespace gitlog;
+
+alter table gitmaven
+  add constraint gitmaven_pk primary key (groupid, artifactid, pattern, branch)
   using index tablespace gitlogindex;

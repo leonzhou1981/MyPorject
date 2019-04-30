@@ -4,26 +4,27 @@ import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.transport.FetchResult;
-import org.eclipse.jgit.transport.RefSpec;
-import org.eclipse.jgit.transport.TrackingRefUpdate;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
@@ -33,7 +34,7 @@ public class ChangeTracerForGit implements ChangeTracer {
     private static final String BRANCH = "trunk";
     private static final String GIT_USERNAME = "liang.zhou";
     private static final String GIT_PASSWORD = "";
-    private static final String PROJECT_ROOT = "C:\\TMFF\\NEW_REPO\\"; //need file separator as end
+    private static final String PROJECT_ROOT = "C:\\TMFF\\NEW_REPO"; //need file separator as end
 
 
     public static void main(String[] args) {
@@ -46,31 +47,113 @@ public class ChangeTracerForGit implements ChangeTracer {
                 return;
             }
 
-            List<File> repos = findLocalRepos(PROJECT_ROOT);
-            if (repos != null && repos.size() > 0) {
-                String gitlogseq_increase = "select gitlogseq.nextVal from dual";
-                DatabaseUtil.executeUpdate(dbConnection, gitlogseq_increase, null);
-                for (int i = 0; i < repos.size(); i++) {
-                    File repo = repos.get(i);
-                    Repository repository = Git.open(repo).getRepository();
-                    ObjectId latestCommitId = repository.resolve("origin/" + BRANCH + "^{commit}");
-                    String addCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid, packdate) values (gitlogseq.currVal,?,?,?,?)";
-                    List addCommitParams = new ArrayList();
-                    addCommitParams.add(repo.getParent().substring(PROJECT_ROOT.length()));
-                    addCommitParams.add(BRANCH);
-                    addCommitParams.add(latestCommitId.getName());
-                    addCommitParams.add(new Timestamp(new Date().getTime()));
-                    DatabaseUtil.executeUpdate(dbConnection, addCommitSQL, addCommitParams);
-                }
-            }
+            initChangeTracerDataBase(PROJECT_ROOT, BRANCH);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static List<File> findLocalRepos(String projectRoot) {
+    private static void initChangeTracerDataBase(final String localProjectRoot, String branch) throws IOException {
+        Connection dbConnection = DatabaseUtil.getDBConnection();
+        if (dbConnection == null) {
+            System.out.println("Cannot find database...");
+            return;
+        }
+
+        FileRepositoryBuilder builder = new FileRepositoryBuilder();
+        builder.setMustExist(true);
+
+        //init gitmaven
+        final Map<String, Map> jarsPattern = new HashMap();
+        FileUtil.iterateAllFilesUnderOneDirectory(localProjectRoot, new IFileAction() {
+            public void doFileProcess(File file) {
+                try {
+                    if ("pom.xml".equals(file.getName())) {
+                        Document doc = XMLUtil.readXMLFile(file);
+                        String path = file.getAbsolutePath().substring(localProjectRoot.length());
+                        path = path.substring(0, path.length() - "pom.xml".length());
+                        path = path.replace("\\", "/");
+                        if (path != null && !(path.startsWith(File.separator + "Deployment" + File.separator)
+                            || path.startsWith(File.separator + "kff" + File.separator + "RegressionTest" + File.separator))) {
+                            Element root = doc.getDocumentElement();
+                            if (root != null) {
+                                String packaging = null;
+                                String artifactId = null;
+                                String groupId = null;
+                                NodeList nodes = root.getChildNodes();
+                                if (nodes != null && nodes.getLength() > 0) {
+                                    for (int i = 0; i < nodes.getLength(); i++) {
+                                        Node node = nodes.item(i);
+                                        if (Node.ELEMENT_NODE == node.getNodeType()) {
+                                            if ("packaging".equals(node.getNodeName())) {
+                                                packaging = node.getFirstChild().getNodeValue();
+                                            }
+                                            if ("artifactId".equals(node.getNodeName())) {
+                                                artifactId = node.getFirstChild().getNodeValue();
+                                            }
+                                            if ("groupId".equals(node.getNodeName())) {
+                                                groupId = node.getFirstChild().getNodeValue();
+                                            }
+                                        }
+                                    }
+                                    if ("jar".equals(packaging)) {
+                                        Map mvnMap = new HashMap();
+                                        mvnMap.put("groupId", groupId);
+                                        mvnMap.put("artifactId", artifactId);
+                                        mvnMap.put("pattern", path);
+                                        jarsPattern.put(path, mvnMap);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (IOException | ParserConfigurationException | SAXException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void doDirectoryProcess(File file) {
+
+            }
+
+            @Override
+            public void doProcess(File file) {
+
+            }
+        });
+
+        if (jarsPattern != null && jarsPattern.keySet().size() > 0) {
+            String gitmaven_reset = "delete from gitmaven where branch = ?";
+            List resetParams = new ArrayList();
+            resetParams.add(branch);
+            DatabaseUtil.executeUpdate(dbConnection,gitmaven_reset, resetParams);
+            for (String key : jarsPattern.keySet()) {
+                String groupId = (String) jarsPattern.get(key).get("groupId");
+                String artifactId = (String) jarsPattern.get(key).get("artifactId");
+                String pattern = (String) jarsPattern.get(key).get("pattern");
+                String addPatternSQL = "insert into gitmaven (groupid, artifactid, pattern, branch) values (?,?,?,?)";
+                List addPatternParams = new ArrayList();
+                if (groupId != null && artifactId != null && pattern != null && branch != null) {
+                    addPatternParams.add(groupId);
+                    addPatternParams.add(artifactId);
+                    addPatternParams.add(pattern);
+                    addPatternParams.add(branch);
+                    DatabaseUtil.executeUpdate(dbConnection, addPatternSQL, addPatternParams);
+                } else {
+                    System.out.println("groupId: " + groupId);
+                    System.out.println("artifactId: " + artifactId);
+                    System.out.println("pattern: " + pattern);
+                    System.out.println("branch: " + branch);
+                }
+            }
+        }
+
+        //init gitlog
         final List<File> repos = new ArrayList<>();
-        FileUtil.iterateAllFilesUnderOneDirectory(projectRoot, new IFileAction() {
+
+        FileUtil.iterateAllFilesUnderOneDirectory(localProjectRoot, new IFileAction() {
             @Override
             public void doFileProcess(File file) {
 
@@ -88,6 +171,57 @@ public class ChangeTracerForGit implements ChangeTracer {
 
             }
         });
+
+        if (repos != null && repos.size() > 0) {
+            String gitlogseq_increase = "select gitlogseq.nextVal from dual";
+            DatabaseUtil.executeUpdate(dbConnection, gitlogseq_increase, null);
+            for (File repo : repos) {
+                Repository repository = Git.open(repo).getRepository();
+                ObjectId latestCommitId = repository.resolve("origin/" + branch + "^{commit}");
+                String addCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid, packdate, packdone) values (gitlogseq.currVal,?,?,?,?,?)";
+                List addCommitParams = new ArrayList();
+                addCommitParams.add(repo.getParent().substring(repo.getParent().lastIndexOf(File.separator) + 1));
+                addCommitParams.add(BRANCH);
+                addCommitParams.add(latestCommitId.getName());
+                addCommitParams.add(new Timestamp(new Date().getTime()));
+                addCommitParams.add(new BigDecimal(1));
+                DatabaseUtil.executeUpdate(dbConnection, addCommitSQL, addCommitParams);
+            }
+        }
+    }
+
+    private static Map<String, Map> findAllJarsPattern(Connection dbConnection, final String projectDirectory, String branch, boolean useCache) {
+
+        final Map<String, Map> jarsPattern = new HashMap();
+
+        if (useCache) {
+            String findPatternSQL = "select * from gitmaven where branch = ?";
+            List findPatternParams = new ArrayList();
+            findPatternParams.add(branch);
+            List<Map> lstResult = DatabaseUtil.executeQuery(dbConnection, findPatternSQL, findPatternParams);
+            for (Map result : lstResult) {
+                jarsPattern.put((String) result.get("pattern"), result);
+            }
+        } else {
+
+        }
+
+        return jarsPattern;
+    }
+
+    private static List<File> findLocalRepos(String projectDirectory, String branch, boolean useCache) throws IOException {
+        final List<File> repos = new ArrayList<>();
+        List<String> repoNames = new ArrayList<>();
+
+        File cacheFile = new File("conf/repository.txt");
+        if (useCache && cacheFile.exists()) {
+            repoNames = FileUtil.readTextFile(cacheFile);
+            for (String repoName : repoNames) {
+                repos.add(new File(repoName));
+            }
+        } else {
+
+        }
 
         return repos;
     }

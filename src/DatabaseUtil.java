@@ -113,7 +113,7 @@ public class DatabaseUtil {
         return lstResult;
     }
 
-    private static List convertResultSetToListMap(ResultSet rs) throws SQLException {
+    private static List<Map> convertResultSetToListMap(ResultSet rs) throws SQLException {
         if (rs != null) {
             List lstReturn = new ArrayList();
             ResultSetMetaData rsmd = rs.getMetaData();

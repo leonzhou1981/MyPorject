@@ -124,6 +124,15 @@ public class StringUtil {
         }
     }
 
+    public static String replaceAll(String source, String to_be_replaced, String replace_as) {
+        if (source != null) {
+            while (source.indexOf(to_be_replaced) > 0) {
+                source = source.substring(0, source.indexOf(to_be_replaced)) + replace_as + source.substring(source.indexOf(to_be_replaced) + to_be_replaced.length());
+            }
+        }
+        return source;
+    }
+
     public static void main(String[] args) {
         System.out.println(pickupWord("ABC", "A", "C"));
         System.out.println(pickupWord("ABC", "AB", null));
