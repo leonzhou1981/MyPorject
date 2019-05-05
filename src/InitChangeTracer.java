@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 public class InitChangeTracer {
 
@@ -54,6 +55,7 @@ public class InitChangeTracer {
 
     }
 
+    private static Map<String, Map> dependencies = new HashMap<>();
     private static boolean initChangeTracerDataBase(final String localProjectRoot, String branch) throws IOException {
         Connection dbConnection = DatabaseUtil.getDBConnection();
         if (dbConnection == null) {
@@ -172,6 +174,7 @@ public class InitChangeTracer {
                                         jarsPattern.put(path, mvnMap);
                                     }
                                     Map pom = new HashMap();
+                                    pom.put("artifactId", artifactId);
                                     pom.put("packaging", packaging);
                                     pom.put("parentArtifactid", parentArtifactid);
                                     pom.put("lstModule", lstModule);
@@ -198,7 +201,6 @@ public class InitChangeTracer {
         });
 
         //sort
-        Map<String, Map> dependencies = new HashMap<>();
         for (String artifactId : poms.keySet()) {
             Map<String, String> mDependency = findOneLevelDependencies(artifactId, poms, paths);
             if (mDependency != null && mDependency.size() > 0) {
@@ -206,6 +208,7 @@ public class InitChangeTracer {
             }
         }
 
+        checkCycleDependency(dependencies, new Stack<String>());
 
 
         if (jarsPattern != null && jarsPattern.keySet().size() > 0) {
@@ -268,6 +271,25 @@ public class InitChangeTracer {
         return true;
     }
 
+    private static void checkCycleDependency(Map<String, Map> mDependency, Stack<String> chain) {
+        if (mDependency != null && mDependency.size() > 0) {
+            for (String dependencyArtifactId : mDependency.keySet()) {
+                if (dependencyArtifactId != null) {
+                    if (chain.size() > 0 && chain.contains(dependencyArtifactId)) {
+                        for (String artifactId : chain) {
+                            System.out.println(artifactId);
+                        }
+                        System.out.println(dependencyArtifactId);
+                        System.out.println("-------------------------------------------------------------------------");
+                        return;
+                    }
+                    chain.push(dependencyArtifactId);
+                    checkCycleDependency(dependencies.get(dependencyArtifactId), chain);
+                    chain.pop();
+                }
+            }
+        }
+    }
     private static Map<String, String> findOneLevelDependencies(String artifactId, final Map<String, Map> poms, final Map<String, Map> paths) {
         Map mOneLevelDependency = null;
         Map pom = poms.get(artifactId);
@@ -286,7 +308,7 @@ public class InitChangeTracer {
 
                 //if parent pom is pom, then find more dependencies in its sub modules
                 //todo: digest more deep, current program only find one level
-                if ("pom".equalsIgnoreCase(parentPacking)) {
+                /*if ("pom".equalsIgnoreCase(parentPacking)) {
                     List lstModule = (List) parentPom.get("lstModule");
                     String path = (String) parentPom.get("path");
                     if (lstModule != null && lstModule.size() > 0) {
@@ -294,10 +316,12 @@ public class InitChangeTracer {
                             String modulePath = (String) lstModule.get(i);
                             Map modulePom = paths.get(path + StringUtil.replaceAll(modulePath, "/", File.separator) + File.separator);
                             String modulePacking = (String) modulePom.get("packaging");
-                            findDependencies(mOneLevelDependency, modulePom, modulePacking);
+                            if (!artifactId.equals(modulePom.get("artifactId"))) {
+                                findDependencies(mOneLevelDependency, modulePom, modulePacking);
+                            }
                         }
                     }
-                }
+                }*/
                 parentArtifactid = (String) parentPom.get("parentArtifactid");
             }
         }
