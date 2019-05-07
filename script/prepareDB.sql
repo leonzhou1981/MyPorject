@@ -1,15 +1,15 @@
 create tablespace gitlog
-datafile 'C:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlog.dbf'
+datafile 'D:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlog.dbf'
 size 20480m
 extent management local segment space management auto;
 
 create temporary tablespace gitlogtemp
-tempfile 'C:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlogtemp.dbf'
+tempfile 'D:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlogtemp.dbf'
 size 2048m
 extent management local uniform size 50m;
 
 create tablespace gitlogindex
-datafile 'C:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlogindex.dbf'
+datafile 'D:\app\oracle\oradata\ORCL12C\TABLESPACE\gitlogindex.dbf'
 size 20480m
 extent management local segment space management auto;
 
@@ -45,15 +45,16 @@ alter table gitlog
   add constraint gitlog_pk primary key (reponame, branch, commitid, batchid)
   using index tablespace gitlogindex;
 
-create table gitmaven
+create table gitjarmap
 (
   groupid                VARCHAR2(200) not null,
   artifactid             VARCHAR2(200) not null,
   pattern                VARCHAR2(200) not null,
-  branch                 VARCHAR2(200) not null
+  branch                 VARCHAR2(200) not null,
+  sortorder              NUMBER(9,0)
 )
 tablespace gitlog;
 
-alter table gitmaven
-  add constraint gitmaven_pk primary key (groupid, artifactid, pattern, branch)
+alter table gitjarmap
+  add constraint gitjarmap_pk primary key (groupid, artifactid, pattern, branch)
   using index tablespace gitlogindex;
