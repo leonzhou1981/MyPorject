@@ -227,18 +227,24 @@ public class InitChangeTracer {
             dependencies.put(artifactId, mDependency);
         }
 
-        Stack<String> chain = new Stack<>();
+        /*Stack<String> chain = new Stack<>();
         for (String artifactId : dependencies.keySet()) {
             chain.push(artifactId);
             checkCycleDependency(artifactId, chain);
             chain.pop();
-        }
+        }*/
 
         if (jarsPattern != null && jarsPattern.keySet().size() > 0) {
             String gitmaven_reset = "delete from gitjarmap where branch = ?";
             List resetParams = new ArrayList();
             resetParams.add(branch);
             DatabaseUtil.executeUpdate(dbConnection, gitmaven_reset, resetParams);
+
+            String mvndependency_reset = "delete from mvndependency where branch = ?";
+            List mvndependencyParams = new ArrayList();
+            mvndependencyParams.add(branch);
+            DatabaseUtil.executeUpdate(dbConnection, mvndependency_reset, mvndependencyParams);
+
             for (String key : jarsPattern.keySet()) {
                 String groupId = (String) jarsPattern.get(key).get("groupId");
                 String artifactId = (String) jarsPattern.get(key).get("artifactId");
@@ -251,6 +257,18 @@ public class InitChangeTracer {
                     addPatternParams.add(pattern);
                     addPatternParams.add(branch);
                     DatabaseUtil.executeUpdate(dbConnection, addPatternSQL, addPatternParams);
+                    if (dependencies.get(artifactId) != null) {
+                        for (Object dependency : dependencies.get(artifactId).keySet()) {
+                            if (dependency != null) {
+                                String addDependencySQL = "insert into mvndependency (artifactid, dependency, branch) values (?,?,?)";
+                                List addDependencyParams = new ArrayList();
+                                addDependencyParams.add(artifactId);
+                                addDependencyParams.add(dependency);
+                                addDependencyParams.add(branch);
+                                DatabaseUtil.executeUpdate(dbConnection, addDependencySQL, addDependencyParams);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -292,10 +310,11 @@ public class InitChangeTracer {
                 DatabaseUtil.executeUpdate(dbConnection, addCommitSQL, addCommitParams);
             }
         }
+
+        DatabaseUtil.closeDBConnection(dbConnection);
         return true;
     }
 
-    private static int sortorder = 0;
     private static Map<String, Map> dependencyTree = new HashMap<>();
     private static Map<String, Map> dependencyAllNodes = new HashMap<>();
 

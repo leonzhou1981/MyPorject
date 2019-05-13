@@ -115,7 +115,7 @@ public class DatabaseUtil {
 
     private static List<Map> convertResultSetToListMap(ResultSet rs) throws SQLException {
         if (rs != null) {
-            List lstReturn = new ArrayList();
+            List<Map> lstReturn = new ArrayList<>();
             ResultSetMetaData rsmd = rs.getMetaData();
             int columnCount = rsmd.getColumnCount();
             while (rs.next()) {
