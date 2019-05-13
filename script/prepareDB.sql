@@ -50,11 +50,22 @@ create table gitjarmap
   groupid                VARCHAR2(200) not null,
   artifactid             VARCHAR2(200) not null,
   pattern                VARCHAR2(200) not null,
-  branch                 VARCHAR2(200) not null,
-  sortorder              NUMBER(9,0)
+  branch                 VARCHAR2(200) not null
 )
 tablespace gitlog;
 
 alter table gitjarmap
   add constraint gitjarmap_pk primary key (groupid, artifactid, pattern, branch)
+  using index tablespace gitlogindex;
+
+create table mvndependency
+(
+  artifactid            VARCHAR2(200) not null,
+  dependency            VARCHAR2(200) not null,
+  branch                VARCHAR2(200) not null
+)
+tablespace gitlog;
+
+alter table mvndependency
+  add constraint mvndependency_pk primary key (artifactid, dependency, branch)
   using index tablespace gitlogindex;

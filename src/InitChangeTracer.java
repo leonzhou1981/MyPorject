@@ -29,7 +29,7 @@ public class InitChangeTracer {
     public static void main(String[] args) {
         String localProjectRoot = null;
         String branch = null;
-        if (args == null || args.length != 2 ) {
+        if (args == null || args.length != 2) {
             System.out.println("Please enter the project directory and the branch.");
             return;
         } else {
@@ -56,6 +56,7 @@ public class InitChangeTracer {
     }
 
     private static Map<String, Map> dependencies = new HashMap<>();
+
     private static boolean initChangeTracerDataBase(final String localProjectRoot, String branch) throws IOException {
         Connection dbConnection = DatabaseUtil.getDBConnection();
         if (dbConnection == null) {
@@ -77,10 +78,15 @@ public class InitChangeTracer {
                         Document doc = XMLUtil.readXMLFile(file);
                         String path = file.getAbsolutePath().substring(localProjectRoot.length());
                         path = path.substring(0, path.length() - "pom.xml".length());
-                        if (path != null && !(path.startsWith(File.separator + "ksb" + File.separator)
-                            || path.startsWith(File.separator + "Deployment" + File.separator)
-                            || path.startsWith(File.separator + "kff" + File.separator + "RegressionTest" + File.separator)
-                            || path.startsWith(File.separator + "platform" + File.separator + "dev" + File.separator + "components" + File.separator + "Plugins" + File.separator + "Toolkits" + File.separator + "Signer" + File.separator))) {
+                        if (path != null && !(
+                            path.startsWith(File.separator + "ksb" + File.separator)
+                                || path.startsWith(File.separator + "Deployment" + File.separator)
+                                || path
+                                .startsWith(File.separator + "kff" + File.separator + "RegressionTest" + File.separator)
+                                || path.startsWith(
+                                File.separator + "platform" + File.separator + "dev" + File.separator + "components"
+                                    + File.separator + "Plugins" + File.separator + "Toolkits" + File.separator
+                                    + "Signer" + File.separator))) {
                             Element root = doc.getDocumentElement();
                             if (root != null) {
                                 String packaging = null;
@@ -111,7 +117,8 @@ public class InitChangeTracer {
                                                         Node parentInfo = parentInfos.item(j);
                                                         if (Node.ELEMENT_NODE == parentInfo.getNodeType()) {
                                                             if ("artifactId".equals(parentInfo.getNodeName())) {
-                                                                parentArtifactid = parentInfo.getFirstChild().getNodeValue();
+                                                                parentArtifactid =
+                                                                    parentInfo.getFirstChild().getNodeValue();
                                                             }
                                                         }
                                                     }
@@ -125,7 +132,8 @@ public class InitChangeTracer {
                                                         Node module = modules.item(j);
                                                         if (Node.ELEMENT_NODE == module.getNodeType()) {
                                                             if ("module".equals(module.getNodeName())) {
-                                                                String modulePath = module.getFirstChild().getNodeValue();
+                                                                String modulePath =
+                                                                    module.getFirstChild().getNodeValue();
                                                                 lstModule.add(modulePath);
                                                             }
                                                         }
@@ -143,22 +151,34 @@ public class InitChangeTracer {
                                                             String dependencyGroupId = null;
                                                             if ("dependency".equals(dependency.getNodeName())) {
                                                                 NodeList dependencyInfos = dependency.getChildNodes();
-                                                                if (dependencyInfos != null && dependencyInfos.getLength() > 0) {
-                                                                    for (int k = 0; k < dependencyInfos.getLength(); k++) {
+                                                                if (dependencyInfos != null
+                                                                    && dependencyInfos.getLength() > 0) {
+                                                                    for (
+                                                                        int k = 0; k < dependencyInfos.getLength();
+                                                                        k++) {
                                                                         Node dependencyInfo = dependencyInfos.item(k);
-                                                                        if (Node.ELEMENT_NODE == dependencyInfo.getNodeType()) {
-                                                                            if ("artifactId".equals(dependencyInfo.getNodeName())) {
-                                                                                dependencyArtifactId = dependencyInfo.getFirstChild().getNodeValue();
+                                                                        if (Node.ELEMENT_NODE == dependencyInfo
+                                                                            .getNodeType()) {
+                                                                            if ("artifactId"
+                                                                                .equals(dependencyInfo.getNodeName())) {
+                                                                                dependencyArtifactId =
+                                                                                    dependencyInfo.getFirstChild()
+                                                                                        .getNodeValue();
                                                                             }
-                                                                            if ("groupId".equals(dependencyInfo.getNodeName())) {
-                                                                                dependencyGroupId = dependencyInfo.getFirstChild().getNodeValue();
+                                                                            if ("groupId"
+                                                                                .equals(dependencyInfo.getNodeName())) {
+                                                                                dependencyGroupId =
+                                                                                    dependencyInfo.getFirstChild()
+                                                                                        .getNodeValue();
                                                                             }
                                                                         }
                                                                     }
                                                                 }
                                                             }
-                                                            if (dependencyGroupId != null && dependencyGroupId.contains(".kewill.")) {
-                                                                mDependency.put(dependencyArtifactId, dependencyGroupId);
+                                                            if (dependencyGroupId != null && dependencyGroupId
+                                                                .contains(".kewill.")) {
+                                                                mDependency
+                                                                    .put(dependencyArtifactId, dependencyGroupId);
                                                             }
                                                         }
                                                     }
@@ -173,6 +193,7 @@ public class InitChangeTracer {
                                         mvnMap.put("pattern", path);
                                         jarsPattern.put(path, mvnMap);
                                     }
+                                    //for dependency analysis
                                     Map pom = new HashMap();
                                     pom.put("artifactId", artifactId);
                                     pom.put("packaging", packaging);
@@ -203,19 +224,21 @@ public class InitChangeTracer {
         //sort
         for (String artifactId : poms.keySet()) {
             Map<String, String> mDependency = findOneLevelDependencies(artifactId, poms, paths);
-            if (mDependency != null && mDependency.size() > 0) {
-                dependencies.put(artifactId, mDependency);
-            }
+            dependencies.put(artifactId, mDependency);
         }
 
-        checkCycleDependency(dependencies, new Stack<String>());
-
+        Stack<String> chain = new Stack<>();
+        for (String artifactId : dependencies.keySet()) {
+            chain.push(artifactId);
+            checkCycleDependency(artifactId, chain);
+            chain.pop();
+        }
 
         if (jarsPattern != null && jarsPattern.keySet().size() > 0) {
             String gitmaven_reset = "delete from gitjarmap where branch = ?";
             List resetParams = new ArrayList();
             resetParams.add(branch);
-            DatabaseUtil.executeUpdate(dbConnection,gitmaven_reset, resetParams);
+            DatabaseUtil.executeUpdate(dbConnection, gitmaven_reset, resetParams);
             for (String key : jarsPattern.keySet()) {
                 String groupId = (String) jarsPattern.get(key).get("groupId");
                 String artifactId = (String) jarsPattern.get(key).get("artifactId");
@@ -258,7 +281,8 @@ public class InitChangeTracer {
             for (File repo : repos) {
                 Repository repository = Git.open(repo).getRepository();
                 ObjectId latestCommitId = repository.resolve("origin/" + branch + "^{commit}");
-                String addCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid, packdate, packdone) values (gitlogseq.currVal,?,?,?,?,?)";
+                String addCommitSQL =
+                    "insert into gitlog (batchid, reponame, branch, commitid, packdate, packdone) values (gitlogseq.currVal,?,?,?,?,?)";
                 List addCommitParams = new ArrayList();
                 addCommitParams.add(repo.getParent().substring(repo.getParent().lastIndexOf(File.separator) + 1));
                 addCommitParams.add(branch);
@@ -271,72 +295,98 @@ public class InitChangeTracer {
         return true;
     }
 
-    private static void checkCycleDependency(Map<String, Map> mDependency, Stack<String> chain) {
+    private static int sortorder = 0;
+    private static Map<String, Map> dependencyTree = new HashMap<>();
+    private static Map<String, Map> dependencyAllNodes = new HashMap<>();
+
+    private static void checkCycleDependency(String artifactId, Stack<String> chain) {
+        Map<String, Map> mDependency = dependencies.get(artifactId);
         if (mDependency != null && mDependency.size() > 0) {
             for (String dependencyArtifactId : mDependency.keySet()) {
                 if (dependencyArtifactId != null) {
                     if (chain.size() > 0 && chain.contains(dependencyArtifactId)) {
-                        for (String artifactId : chain) {
-                            System.out.println(artifactId);
+                        System.out.println("-----------------------Cycle Dependency Detected-------------------------");
+                        StringBuilder sb = new StringBuilder();
+                        for (String id: chain) {
+                            sb.append(id).append("->");
                         }
-                        System.out.println(dependencyArtifactId);
+                        sb.append(dependencyArtifactId);
+                        System.out.println(sb);
                         System.out.println("-------------------------------------------------------------------------");
-                        return;
+                    } else {
+                        chain.push(dependencyArtifactId);
+                        checkCycleDependency(dependencyArtifactId, chain);
+                        chain.pop();
                     }
-                    chain.push(dependencyArtifactId);
-                    checkCycleDependency(dependencies.get(dependencyArtifactId), chain);
-                    chain.pop();
                 }
+            }
+        } else {
+            if (!dependencyAllNodes.containsKey(artifactId)) {
+                dependencyAllNodes.put(artifactId, null);
+                dependencyTree.put(artifactId, new HashMap<String, Map>());
+            }
+            Map<String, Map> temp = dependencyTree.get(artifactId);
+            for (int i = chain.size() - 1; i-- > 0;) {
+                String artifactIdInChain = chain.get(i);
+                if (temp.containsKey(artifactIdInChain)) {
+                    temp = temp.get(artifactIdInChain);
+                } else {
+                    if (dependencyAllNodes.containsKey(artifactIdInChain)) {
+                        System.out.println("-----------------------Detect Multi Dependency---------------------------");
+                        StringBuilder sb = new StringBuilder();
+                        for (String id: chain) {
+                            sb.append(id).append("->");
+                        }
+                        System.out.println(sb);
+                        System.out.println("-------------------------------------------------------------------------");
+                    }
+                    temp.put(artifactIdInChain, new HashMap<String, Map>());
+                }
+                dependencyAllNodes.put(artifactIdInChain, null);
             }
         }
     }
-    private static Map<String, String> findOneLevelDependencies(String artifactId, final Map<String, Map> poms, final Map<String, Map> paths) {
+
+    private static Map<String, String> findOneLevelDependencies(
+        String artifactId, final Map<String, Map> poms, final Map<String, Map> paths) {
         Map mOneLevelDependency = null;
         Map pom = poms.get(artifactId);
-        String packing = (String) pom.get("packaging");
-        if ("jar".equalsIgnoreCase(packing)) {
-            mOneLevelDependency = (Map) pom.get("mDependency");
-            if (mOneLevelDependency == null) {
-                mOneLevelDependency = new HashMap();
-            }
-            String parentArtifactid = (String) pom.get("parentArtifactid");
-            while (parentArtifactid != null) {
-                Map parentPom = poms.get(parentArtifactid);
-                String parentPacking = (String) parentPom.get("packaging");
-                //if parent pom is jar, then find more dependencies in it
-                findDependencies(mOneLevelDependency, parentPom, parentPacking);
-
-                //if parent pom is pom, then find more dependencies in its sub modules
-                //todo: digest more deep, current program only find one level
-                /*if ("pom".equalsIgnoreCase(parentPacking)) {
-                    List lstModule = (List) parentPom.get("lstModule");
-                    String path = (String) parentPom.get("path");
-                    if (lstModule != null && lstModule.size() > 0) {
-                        for (int i = 0; i < lstModule.size(); i++) {
-                            String modulePath = (String) lstModule.get(i);
-                            Map modulePom = paths.get(path + StringUtil.replaceAll(modulePath, "/", File.separator) + File.separator);
-                            String modulePacking = (String) modulePom.get("packaging");
-                            if (!artifactId.equals(modulePom.get("artifactId"))) {
-                                findDependencies(mOneLevelDependency, modulePom, modulePacking);
-                            }
+        mOneLevelDependency = (Map) pom.get("mDependency");
+        if (mOneLevelDependency == null) {
+            mOneLevelDependency = new HashMap();
+        }
+        String parentArtifactid = (String) pom.get("parentArtifactid");
+        while (parentArtifactid != null) {
+            Map parentPom = poms.get(parentArtifactid);
+            findDependencies(mOneLevelDependency, parentPom);
+            if (parentPom.get("lstModule") != null) {
+                List lstModule = (List) parentPom.get("lstModule");
+                String path = (String) parentPom.get("path");
+                if (lstModule != null && lstModule.size() > 0) {
+                    for (int i = 0; i < lstModule.size(); i++) {
+                        String modulePath = (String) lstModule.get(i);
+                        Map modulePom = paths.get(path + StringUtil.replaceAll(modulePath, "/", File.separator) + File.separator);
+                        if (!artifactId.equals(modulePom.get("artifactId"))) {
+                            mOneLevelDependency.put(modulePom.get("artifactId"), modulePom.get("groupId"));
+                        } else {
+                            break;
                         }
                     }
-                }*/
-                parentArtifactid = (String) parentPom.get("parentArtifactid");
+                }
             }
+            //for next loop
+            parentArtifactid = (String) parentPom.get("parentArtifactid");
         }
         return mOneLevelDependency;
     }
 
-    private static void findDependencies(Map mOneLevelDependency, Map pom, String packing) {
-        if ("jar".equalsIgnoreCase(packing)) {
-            Map mDependency = (Map) pom.get("mDependency");
-            if (mDependency != null) {
-                for (Iterator it = mDependency.keySet().iterator(); it.hasNext();) {
-                    String dependencyArtifactId = (String) it.next();
-                    String groupId = (String) mDependency.get(dependencyArtifactId);
-                    mOneLevelDependency.put(dependencyArtifactId, groupId);
-                }
+    private static void findDependencies(Map mOneLevelDependency, Map pom) {
+        Map mDependency = (Map) pom.get("mDependency");
+        if (mDependency != null) {
+            for (Iterator it = mDependency.keySet().iterator(); it.hasNext(); ) {
+                String dependencyArtifactId = (String) it.next();
+                String groupId = (String) mDependency.get(dependencyArtifactId);
+                mOneLevelDependency.put(dependencyArtifactId, groupId);
             }
         }
     }
