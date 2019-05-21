@@ -1,3 +1,7 @@
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Ref;
@@ -5,12 +9,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Properties;
 
 public class GitUtil {
 
@@ -37,7 +35,7 @@ public class GitUtil {
                     .findGitDir() // scan up the file system tree
                     .build();
                 git = new Git(repository);
-            } else if (remoteRepoName != null && remoteRepoName.trim().length() > 0){
+            } else if (remoteRepoName != null && remoteRepoName.trim().length() > 0) {
                 newDirForRepo = new File(localUrl + File.separator + localRepoName + File.separator);
                 if (newDirForRepo.exists() || newDirForRepo.mkdirs()) {
                     git = Git.cloneRepository()
@@ -78,11 +76,13 @@ public class GitUtil {
             String password = properties.getProperty("password");
 
             cp = new UsernamePasswordCredentialsProvider(username, password);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
         return cp;
+    }
+
+    public static String getRepoNameFromLocalRepoDirectory(File localRepo) {
+        return localRepo.getParent().substring(localRepo.getParent().lastIndexOf(File.separator) + 1);
     }
 }

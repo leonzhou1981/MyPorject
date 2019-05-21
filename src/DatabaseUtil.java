@@ -77,13 +77,6 @@ public class DatabaseUtil {
         return effect;
     }
 
-    public static List executeQuery(String sql, List args) {
-        Connection conn = getDBConnection();
-        List lstResult = executeQuery(conn, sql, args);
-        closeDBConnection(conn);
-        return lstResult;
-    }
-
     public static List executeQuery(Connection conn, String sql, List args) {
         List lstResult = null;
         if (conn != null) {
@@ -121,7 +114,7 @@ public class DatabaseUtil {
             while (rs.next()) {
                 Map mTemp = new HashMap();
                 for (int i = 0; i < columnCount; i++) {
-                    mTemp.put(rsmd.getColumnName(i + 1), rs.getObject(i + 1));
+                    mTemp.put(rsmd.getColumnName(i + 1).toLowerCase(), rs.getObject(i + 1));
                 }
                 lstReturn.add(mTemp);
             }

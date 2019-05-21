@@ -302,7 +302,7 @@ public class InitChangeTracer {
                 String addCommitSQL =
                     "insert into gitlog (batchid, reponame, branch, commitid, packdate, packdone) values (gitlogseq.currVal,?,?,?,?,?)";
                 List addCommitParams = new ArrayList();
-                addCommitParams.add(repo.getParent().substring(repo.getParent().lastIndexOf(File.separator) + 1));
+                addCommitParams.add(GitUtil.getRepoNameFromLocalRepoDirectory(repo));
                 addCommitParams.add(branch);
                 addCommitParams.add(latestCommitId.getName());
                 addCommitParams.add(new Timestamp(new Date().getTime()));

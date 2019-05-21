@@ -1,4 +1,6 @@
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Stack;
 import java.util.TreeMap;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -31,21 +33,43 @@ import java.util.Map;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
-//    private static final String REPO_NAME = "kff";
-//    private static final String REMOTE_REPO_URL = "https://bitbucket.blujaysolutions.com/scm/tmff/" + REPO_NAME + ".git";
-//    private static final String LOCAL_REPO_URL = "C:\\TMFF\\NEW_REPO\\" + REPO_NAME + "\\.git";
-//    private static final String BRANCH = "trunk";
-//    private static final String GIT_USERNAME = "liang.zhou";
-//    private static final String GIT_PASSWORD = "";
-//    private static final String PROJECT_ROOT = "C:\\TMFF\\NEW_REPO"; //need file separator as end
-
     public static void main(String[] args) {
-        FileRepositoryBuilder builder = new FileRepositoryBuilder();
-        builder.setMustExist(true);
-
+        String localProjectRoot = null;
+        String branch = null;
+        if (args == null || args.length != 2) {
+            System.out.println("Please enter the project directory and the branch.");
+            return;
+        } else {
+            localProjectRoot = args[0];
+            branch = args[1];
+        }
+        getDiffPerCommit(localProjectRoot, branch);
+        updateStatus(localProjectRoot,branch);
     }
 
+    private static boolean updateStatus(String localProjectDirectory, String branch) {
+        Connection dbConnection = DatabaseUtil.getDBConnection();
+        if (dbConnection == null) {
+            System.out.println("Cannot find database...");
+            return false;
+        }
 
+        List<File> repos = findLocalRepos(localProjectDirectory);
+        for (File repo : repos) {
+            String repoName = GitUtil.getRepoNameFromLocalRepoDirectory(repo);
+            String updateStatusSQL = "update gitlog set packdate = sysdate, packdone = 1"
+                + " where (reponame, branch, batchid) in "
+                + "  (select reponame, branch, max(batchid)"
+                + "     from gitlog "
+                + "    where reponame = ? and branch = ? and packdate is null and packdone is null"
+                + " group by reponame, branch)";
+            List updateStatusParams = new ArrayList();
+            updateStatusParams.add(repoName);
+            updateStatusParams.add(branch);
+            DatabaseUtil.executeUpdate(dbConnection, updateStatusSQL, updateStatusParams);
+        }
+        return true;
+    }
 
 
     private static List<File> findLocalRepos(String localProjectDirectory) {
@@ -77,9 +101,10 @@ public class ChangeTracerForGit implements ChangeTracer {
         return repos;
     }
 
-    private static void getDiffPerCommit(String localProjectDirectory) {
+    private static void getDiffPerCommit(String localProjectDirectory, String branch) {
+        Connection dbConnection = null;
         try {
-            Connection dbConnection = DatabaseUtil.getDBConnection();
+            dbConnection = DatabaseUtil.getDBConnection();
             if (dbConnection == null) {
                 System.out.println("Cannot find database...");
                 return;
@@ -92,7 +117,12 @@ public class ChangeTracerForGit implements ChangeTracer {
                 }
             }
 
-            Map changeJars = new HashMap();
+            Map<String, Map> changeJars = new HashMap<>();
+            Map<String, Map> jarsPattern = null;
+            //generate new batch id
+            String genBatchIdSQL = "select gitlogseq.nextVal from dual";
+            DatabaseUtil.executeQuery(dbConnection, genBatchIdSQL, new ArrayList());
+            //search for differences
             for (File localRepo : repos) {
                 if (localRepo.exists()) {
                     FileRepositoryBuilder builder = new FileRepositoryBuilder();
@@ -101,18 +131,13 @@ public class ChangeTracerForGit implements ChangeTracer {
                         .findGitDir() // scan up the file system tree
                         .build();
                     Git git = new Git(repository);
-                    String repo = repository.toString();
-                    String branch = repository.getBranch();
-                    Map<String, Map> jarsPattern = findJarsPattern(dbConnection, branch);
-
+                    String repo = GitUtil.getRepoNameFromLocalRepoDirectory(localRepo);
+                    if (jarsPattern == null) {
+                        jarsPattern = findJarsPattern(dbConnection, branch);
+                    }
                     RevWalk revWalk = new RevWalk(repository);
-                    CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
-                    CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
-                    ObjectReader reader = git.getRepository().newObjectReader();
-                    ObjectId latestCommit = git.getRepository().resolve("origin/" + branch + "^{commit}");
-                    RevCommit newCommit = revWalk.parseCommit(latestCommit);
 
-                    //get the last pack commit id from database
+                    //get the last old commit id from database
                     String findLastPackCommitSQL = "select commitid from gitlog where reponame = ? and branch = ? "
                         + "and packdone = 1 order by batchid desc";
                     List findLastPackCommitParams = new ArrayList();
@@ -125,31 +150,98 @@ public class ChangeTracerForGit implements ChangeTracer {
                     ObjectId lastPackCommit = git.getRepository().resolve(lastPackCommitId);
                     RevCommit oldCommit = revWalk.parseCommit(lastPackCommit);
 
+                    //get the new commit id from git and write it to database
+                    CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+                    CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+                    ObjectReader reader = git.getRepository().newObjectReader();
+                    ObjectId latestCommit = git.getRepository().resolve("origin/" + branch + "^{commit}");
+                    RevCommit newCommit = revWalk.parseCommit(latestCommit);
+                    String addNewCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid) values (gitlogseq.currval,?,?,?)";
+                    List addNewCommitParams = new ArrayList();
+                    addNewCommitParams.add(repo);
+                    addNewCommitParams.add(branch);
+                    addNewCommitParams.add(latestCommit.getName());
+                    DatabaseUtil.executeUpdate(dbConnection, addNewCommitSQL, addNewCommitParams);
+
                     //Compare
                     oldTreeIter.reset(reader, oldCommit.getTree().getId());
                     newTreeIter.reset(reader, newCommit.getTree().getId());
                     List<DiffEntry> diffs = git.diff().setNewTree(newTreeIter).setOldTree(oldTreeIter).call();
                     for (DiffEntry entry : diffs) {
-                        String oldPath = entry.getOldPath();
-                        String newPath = entry.getNewPath();
+                        String oldPath = File.separator + repo + File.separator + entry.getOldPath();
+                        oldPath = StringUtil.replaceAll(oldPath, "\\", "/");
+                        String newPath = File.separator + repo + File.separator + entry.getNewPath();
+                        newPath = StringUtil.replaceAll(newPath, "\\", "/");
 
                         for (Iterator jarPatternIter = jarsPattern.keySet().iterator(); jarPatternIter.hasNext();) {
                             String jarPattern = (String) jarPatternIter.next();
-                            if (oldPath.startsWith(jarPattern) || newPath.startsWith(jarPattern)) {
+                            String formattedJarPattern = StringUtil.replaceAll(jarPattern, "\\", "/");
+                            if (oldPath.startsWith(formattedJarPattern) || newPath.startsWith(formattedJarPattern)) {
                                 changeJars.put(jarPattern, jarsPattern.get(jarPattern));
                             }
                         }
                     }
                 }
             }
-            //sort change jars according to dependency
 
-        } catch (IOException e) {
+            LinkedList<String> sortedChangeJars = new LinkedList<>();
+            LinkedList<String> unsortedChangeJars = new LinkedList<>();
+            Map<String, Map> changeJarsWithArtifactIdAsKey = new HashMap<>();
+            if (changeJars != null) {
+                for (String key : changeJars.keySet()) {
+                    Map jarInfo = changeJars.get(key);
+                    String artifactid = (String) jarInfo.get("artifactid");
+                    unsortedChangeJars.add(artifactid);
+                    changeJarsWithArtifactIdAsKey.put(artifactid, jarInfo);
+                }
+            }
+
+            //sort change jars according to dependency
+//            sortedChangeJars(unsortedChangeJars, sortedChangeJars, changeJarsWithArtifactIdAsKey);
+
+            for (String key : unsortedChangeJars) {//TODO: sort
+                Map jarInfo = changeJarsWithArtifactIdAsKey.get(key);
+                System.out.println(jarInfo.get("pattern"));
+            }
+        } catch (IOException | GitAPIException e) {
             e.printStackTrace();
-        } catch (NoHeadException e) {
-            e.printStackTrace();
-        } catch (GitAPIException e) {
-            e.printStackTrace();
+        } finally {
+            if (dbConnection != null) {
+                DatabaseUtil.closeDBConnection(dbConnection);
+            }
+        }
+    }
+
+    private static void sortedChangeJars(
+        LinkedList<String> unsortedChangeJars, LinkedList<String> sortedChangeJars,
+        Map<String, Map> changeJarsWithArtifactIdAsKey) {
+        for (String artifactid : unsortedChangeJars) {
+            Map jarInfo = changeJarsWithArtifactIdAsKey.get(artifactid);
+            Map mDependency = (Map) jarInfo.get("dependency");
+            if (mDependency != null && mDependency.size() > 0) {
+                int notMatch = 0;
+                for (Object dependency : mDependency.keySet()) {
+                    if (dependency != null) {
+                        int notMatch2 = 0;
+                        for (String artifactid2 : unsortedChangeJars) {
+                            Map jarInfo2 = changeJarsWithArtifactIdAsKey.get(artifactid2);
+                            if (dependency.equals(jarInfo2.get("artifactid"))) {
+
+                            } else {
+                                notMatch2++;
+                            }
+                        }
+                        if (notMatch2 == unsortedChangeJars.size()) {
+                            notMatch++;
+                        }
+                    }
+                }
+                if (notMatch == mDependency.size()) {
+                    sortedChangeJars.add(artifactid);
+                }
+            } else {
+                sortedChangeJars.add(artifactid);
+            }
         }
     }
 

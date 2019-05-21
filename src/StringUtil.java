@@ -126,7 +126,7 @@ public class StringUtil {
 
     public static String replaceAll(String source, String to_be_replaced, String replace_as) {
         if (source != null) {
-            while (source.indexOf(to_be_replaced) > 0) {
+            while (source.indexOf(to_be_replaced) > -1) {
                 source = source.substring(0, source.indexOf(to_be_replaced)) + replace_as + source.substring(source.indexOf(to_be_replaced) + to_be_replaced.length());
             }
         }
