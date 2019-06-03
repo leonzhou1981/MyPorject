@@ -1,5 +1,7 @@
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -48,5 +50,37 @@ public class MD5Util {
         int d1 = n / 16;
         int d2 = n % 16;
         return hexDigIts[d1] + hexDigIts[d2];
+    }
+
+    public static String getMd5ByFile(File file) {
+        InputStream fis;
+        byte[] buffer = new byte[2048];
+        int numRead = 0;
+        MessageDigest md5;
+
+        try {
+            fis = new FileInputStream(file);
+            md5 = MessageDigest.getInstance("MD5");
+            while ((numRead = fis.read(buffer)) > 0) {
+                md5.update(buffer, 0, numRead);
+            }
+            fis.close();
+            return md5ToString(md5.digest());
+        } catch (Exception e) {
+            System.out.println("error");
+            return null;
+        }
+    }
+
+    public static String md5ToString(byte[] md5Bytes) {
+        StringBuffer hexValue = new StringBuffer();
+        for (int i = 0; i < md5Bytes.length; i++) {
+            int val = ((int) md5Bytes[i]) & 0xff;
+            if (val < 16) {
+                hexValue.append("0");
+            }
+            hexValue.append(Integer.toHexString(val));
+        }
+        return hexValue.toString();
     }
 }
