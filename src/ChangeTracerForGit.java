@@ -1,10 +1,14 @@
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Stack;
-import java.util.TreeMap;
+import java.util.List;
+import java.util.Map;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.NoHeadException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -13,23 +17,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class ChangeTracerForGit implements ChangeTracer {
 
@@ -44,7 +31,7 @@ public class ChangeTracerForGit implements ChangeTracer {
             branch = args[1];
         }
         getDiffPerCommit(localProjectRoot, branch);
-        updateStatus(localProjectRoot,branch);
+        updateStatus(localProjectRoot, branch);
     }
 
     private static boolean updateStatus(String localProjectDirectory, String branch) {
@@ -156,7 +143,8 @@ public class ChangeTracerForGit implements ChangeTracer {
                     ObjectReader reader = git.getRepository().newObjectReader();
                     ObjectId latestCommit = git.getRepository().resolve("origin/" + branch + "^{commit}");
                     RevCommit newCommit = revWalk.parseCommit(latestCommit);
-                    String addNewCommitSQL = "insert into gitlog (batchid, reponame, branch, commitid) values (gitlogseq.currval,?,?,?)";
+                    String addNewCommitSQL =
+                        "insert into gitlog (batchid, reponame, branch, commitid) values (gitlogseq.currval,?,?,?)";
                     List addNewCommitParams = new ArrayList();
                     addNewCommitParams.add(repo);
                     addNewCommitParams.add(branch);
@@ -173,7 +161,7 @@ public class ChangeTracerForGit implements ChangeTracer {
                         String newPath = File.separator + repo + File.separator + entry.getNewPath();
                         newPath = StringUtil.replaceAll(newPath, "\\", "/");
 
-                        for (Iterator jarPatternIter = jarsPattern.keySet().iterator(); jarPatternIter.hasNext();) {
+                        for (Iterator jarPatternIter = jarsPattern.keySet().iterator(); jarPatternIter.hasNext(); ) {
                             String jarPattern = (String) jarPatternIter.next();
                             String formattedJarPattern = StringUtil.replaceAll(jarPattern, "\\", "/");
                             if (oldPath.startsWith(formattedJarPattern) || newPath.startsWith(formattedJarPattern)) {
