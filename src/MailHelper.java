@@ -21,6 +21,18 @@ public class MailHelper {
             email.setMsg("This is a test mail ... :-)");
             email.addTo("tmfftest2@farrow.com");
 
+            System.getProperties().setProperty("mail.mime.splitlongparameters", "false");
+
+//            email.setHostName("smtp.163.com");
+//            email.setSmtpPort(465);
+//            email.setAuthenticator(new DefaultAuthenticator("iceivy@icloud.com", ""));
+//            email.setSSLOnConnect(true);
+////            email.setStartTLSEnabled(false);
+//            email.setFrom("iceivy@icloud.com");
+//            email.setSubject("TestMail");
+//            email.setMsg("This is a test mail ... :-)");
+//            email.addTo("liang.zhou@blujaysolutions.com");
+
             /*email.setHostName("outlook.office365.com");
             email.setSmtpPort(587);
             email.setAuthenticator(new DefaultAuthenticator("liang.zhou@blujaysolutions.com", ""));

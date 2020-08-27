@@ -22,11 +22,11 @@ public class MyReader {
         if (ret == JFileChooser.APPROVE_OPTION) {
             File file = fileopen.getSelectedFile();
 
-//            List<String> result = getKeyLines(file);
+            List<String> result = getKeyLines(file);
 
 //            List<String> result = getFilteredLog(file);
 
-            List<String> result = getOneSessionLog(file);
+//            List<String> result = getOneSessionLog(file);
 
 //            List<String> result = getUnPublishedSQL(file);
             File outputFile = new File("C:\\Temp\\result.txt");
@@ -65,7 +65,7 @@ public class MyReader {
                 if (pos > -1) {
                     String piece = line.substring(pos + filter.length());
                     int time = getFirstNumber(piece);
-                    if (time > 999) {
+                    if (time > 99) {
                         if (lstBuffer.size() > 1) {
                             int firstPrevLine = -1;
                             for (int i = lstBuffer.size(); i-- > 1;) {

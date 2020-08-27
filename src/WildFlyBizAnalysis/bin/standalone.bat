@@ -3,6 +3,9 @@ rem -------------------------------------------------------------------------
 rem JBoss Bootstrap Script for Windows
 rem -------------------------------------------------------------------------
 
+set "JBOSS_HOME=C:\wildfly14\wildfly14_biz"
+set "JAVA_HOME=C:\jdk1.8.0_231"
+
 rem Use --debug to activate debug mode with an optional argument to specify the port
 rem Usage : standalone.bat --debug
 rem         standalone.bat --debug 9797

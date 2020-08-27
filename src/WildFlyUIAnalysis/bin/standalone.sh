@@ -1,5 +1,8 @@
 #!/bin/sh
 
+export JBOSS_HOME=/data3/wildfly/wildfly14_ui
+export JAVA_HOME=/usr/java/jdk1.8.0_131
+
 # Use --debug to activate debug mode with an optional argument to specify the port.
 # Usage : standalone.sh --debug
 #         standalone.sh --debug 9797

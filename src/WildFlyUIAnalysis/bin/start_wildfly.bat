@@ -1,0 +1,1 @@
+call standalone.bat -b 0.0.0.0 --debug 28088
