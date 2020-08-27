@@ -44,4 +44,10 @@ public class FileHelper extends AbstractFileHelper {
     protected void doSpecifiedThingsForFile(File aFile) {
 
     }
+
+    public static void main(String[] args) {
+        String tmpPath = "D:\\WEB\\VAADIN\\tmff-web\\tmp";
+        String tmpFile = tmpPath + "/kewill-kff-framework-configuration.jar";
+        new File(tmpFile).delete();
+    }
 }

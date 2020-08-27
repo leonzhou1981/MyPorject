@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.util.Properties;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import javax.swing.SwingUtilities;
 
 /**
  * Created with IntelliJ IDEA.
@@ -29,7 +30,7 @@ public class JarHelper {
             if (!new File(tmpPath).exists()) {
                 new File(tmpPath).mkdirs();
             }
-            String tmpFile = tmpPath + "/kewill-kff-framework-configuration.jar";
+            final String tmpFile = tmpPath + "/kewill-kff-framework-configuration.jar";
             FileOutputStream fos = new FileOutputStream(tmpFile, true);
             int i = 0;
             while ((i = jarInputStream.read()) != -1) {
@@ -37,6 +38,7 @@ public class JarHelper {
             }
             fos.flush();
             fos.close();
+            earJar.close();
 
             //
             JarFile configurationJar = new JarFile(tmpFile);
@@ -49,9 +51,15 @@ public class JarHelper {
             System.out.println(als_release);
 
             //
-            if (new File(tmpFile).exists() && new File(tmpFile).isFile()) {
-                new File(tmpFile).delete();
-            }
+            configurationJar.close();
+            Runnable runnable = new Runnable() {
+                public void run() {
+                    if (new File(tmpFile).exists() && new File(tmpFile).isFile()) {
+                        new File(tmpFile).delete();
+                    }
+                }
+            };
+            SwingUtilities.invokeLater(runnable);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
